@@ -1,0 +1,188 @@
+local Players = game:GetService("Players")
+local StarterGui = game:GetService("StarterGui")
+local TweenService = game:GetService("TweenService")
+local player = Players.LocalPlayer
+local plots = workspace:WaitForChild("Plots")
+
+local zone
+
+-- =====================================
+-- FIND BASE
+-- =====================================
+local function getStructureBaseHome()
+	local name = player.Name:lower()
+	local display = player.DisplayName:lower()
+
+	for _, base in ipairs(plots:GetChildren()) do
+		for _, d in ipairs(base:GetDescendants()) do
+			if d:IsA("TextLabel") then
+				local t = d.Text:lower()
+				if t:find(name,1,true) or t:find(display,1,true) then
+					local dec = base:FindFirstChild("Decorations")
+					if dec and dec:FindFirstChild("Model") then
+						for _, p in ipairs(dec.Model:GetChildren()) do
+							if p:IsA("BasePart") then
+								return p
+							end
+						end
+					end
+				end
+			end
+		end
+	end
+	return nil
+end
+
+local function isInside(part,pos)
+	local lp = part.CFrame:PointToObjectSpace(pos)
+	local h = part.Size/2
+	return math.abs(lp.X)<=h.X and math.abs(lp.Y)<=h.Y and math.abs(lp.Z)<=h.Z
+end
+
+-- =====================================
+-- PROTECTION
+-- =====================================
+getgenv().activateProtection = function()
+	if getgenv().ProtectionEnabled then return end
+	getgenv().ProtectionEnabled = true
+
+	StarterGui:SetCore("SendNotification",{
+		Title="Ryxx Base Protect (Free) ON",
+		Text="Player entering base = exit game",
+		Duration=5
+	})
+
+	local base = getStructureBaseHome()
+	if not base then return end
+
+	zone = Instance.new("Part")
+	zone.Anchored=true
+	zone.CanCollide=false
+	zone.Transparency=1
+	zone.Size=Vector3.new(40,40,300)
+	zone.CFrame=base.CFrame
+	zone.Parent=workspace
+
+	task.spawn(function()
+		while getgenv().ProtectionEnabled do
+			for _,plr in ipairs(Players:GetPlayers()) do
+				if plr~=player and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+					if isInside(zone,plr.Character.HumanoidRootPart.Position) then
+						game:Shutdown()
+					end
+				end
+			end
+			task.wait(0.15)
+		end
+	end)
+end
+
+getgenv().deactivateProtection = function()
+	getgenv().ProtectionEnabled=false
+	if zone then zone:Destroy() zone=nil end
+end
+
+-- =====================================
+-- GUI
+-- =====================================
+local gui = Instance.new("ScreenGui",game.CoreGui)
+gui.Name="RyxxBaseProtectGUI"
+
+local frame = Instance.new("Frame",gui)
+frame.Size=UDim2.fromOffset(180,130) -- SUPER COMPACT GUI
+frame.Position=UDim2.fromScale(0.05,0.3)
+frame.BackgroundColor3=Color3.fromRGB(180,235,255)
+frame.Active=true
+frame.Draggable=true
+frame.BorderSizePixel=0
+
+Instance.new("UICorner",frame).CornerRadius=UDim.new(0,12)
+Instance.new("UIStroke",frame).Color=Color3.fromRGB(0,200,255)
+
+-- NAME ON TOP
+local title=Instance.new("TextLabel",frame)
+title.Position=UDim2.fromOffset(0,5)
+title.Size=UDim2.new(1,0,0,25)
+title.BackgroundTransparency=1
+title.Text="Ryxx Base Protect (Free)"
+title.Font=Enum.Font.GothamBold
+title.TextSize=16
+title.TextColor3=Color3.fromRGB(0,120,255)
+
+-- STATUS BELOW NAME
+local status=Instance.new("TextLabel",frame)
+status.Position=UDim2.fromOffset(0,30)
+status.Size=UDim2.new(1,0,0,20)
+status.BackgroundTransparency=1
+status.Text="Status: OFF"
+status.TextColor3=Color3.fromRGB(255,80,80)
+status.Font=Enum.Font.GothamBold
+status.TextSize=14
+
+-- TOGGLE BUTTON
+local toggle=Instance.new("TextButton",frame)
+toggle.Position=UDim2.fromOffset(20,55)
+toggle.Size=UDim2.fromOffset(140,30)
+toggle.Text="ENABLE"
+toggle.Font=Enum.Font.GothamBold
+toggle.TextSize=14
+toggle.BackgroundColor3=Color3.fromRGB(0,180,255)
+toggle.TextColor3=Color3.new(1,1,1)
+Instance.new("UICorner",toggle).CornerRadius=UDim.new(0,10)
+
+toggle.MouseButton1Click:Connect(function()
+	if getgenv().ProtectionEnabled then
+		getgenv().deactivateProtection()
+		status.Text="Status: OFF"
+		status.TextColor3=Color3.fromRGB(255,80,80)
+		toggle.Text="ENABLE"
+	else
+		getgenv().activateProtection()
+		status.Text="Status: ON"
+		status.TextColor3=Color3.fromRGB(80,255,120)
+		toggle.Text="DISABLE"
+	end
+end)
+
+-- DISCORD BOTTOM
+local discord=Instance.new("TextLabel",frame)
+discord.Position=UDim2.fromOffset(0,frame.Size.Y.Offset-25)
+discord.Size=UDim2.new(1,0,0,20)
+discord.BackgroundTransparency=1
+discord.Text="discord.gg/vjJHBhqN4"
+discord.Font=Enum.Font.GothamBold
+discord.TextSize=14
+discord.TextColor3=Color3.fromRGB(0,100,255)
+
+-- =====================================
+-- FALLING BOX ANIMATION (inside GUI)
+-- =====================================
+task.spawn(function()
+	local frameWidth = frame.AbsoluteSize.X
+	local frameHeight = frame.AbsoluteSize.Y
+
+	while true do
+		local box = Instance.new("Frame", frame)
+		local sizeX = math.random(6,12)
+		local sizeY = math.random(6,12)
+		box.Size = UDim2.fromOffset(sizeX, sizeY)
+		-- Spawn fully inside frame horizontally
+		local spawnX = math.random(0, frameWidth - sizeX)
+		box.Position = UDim2.fromOffset(spawnX, -sizeY)
+		box.BackgroundColor3 = Color3.fromRGB(0,200,255)
+		box.BackgroundTransparency = 0.3
+		box.BorderSizePixel = 0
+		Instance.new("UICorner", box).CornerRadius = UDim.new(1,0)
+
+		-- Tween to move down to bottom of frame
+		local tween = TweenService:Create(
+			box,
+			TweenInfo.new(1.8, Enum.EasingStyle.Linear),
+			{Position = UDim2.fromOffset(spawnX, frameHeight)}
+		)
+		tween:Play()
+		tween.Completed:Connect(function() box:Destroy() end)
+
+		task.wait(0.08)
+	end
+end)
